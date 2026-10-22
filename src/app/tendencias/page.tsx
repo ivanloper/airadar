@@ -19,7 +19,7 @@ export default async function PublishedPage() {
   const rows = await publishedDataset(db);
   return (
     <>
-      <PageHeader title="Tendencias publicadas" intro="Análisis propios de AI Radar, revisados antes de publicarse. Cada uno enlaza a sus fuentes originales." />
+      <PageHeader title="Tendencias publicadas" intro="Análisis revisados, con enlaces a sus fuentes." />
       <Suspense>
         <PublishedList rows={rows} timeZone={tz} generatedAt={now.toISOString()} />
       </Suspense>

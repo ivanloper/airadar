@@ -28,7 +28,7 @@ export default async function SourcesPage() {
     <>
       <PageHeader
         title="Fuentes"
-        intro="Cada conector es independiente: se puede activar, desactivar o sustituir sin tocar el núcleo. Un fallo en una fuente no detiene las demás. La activación se gestiona desde Revisión."
+        intro="Conectores independientes: si uno falla, el resto sigue."
       />
       <div className="space-y-6">
         {groups.map(([platform, items]) => {

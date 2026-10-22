@@ -21,7 +21,7 @@ export default async function HistoryPage() {
 
   return (
     <>
-      <PageHeader title="Histórico" intro="Ejecuciones de los conectores, evolución de señales y cambios de puntuación y de estado." />
+      <PageHeader title="Histórico" intro="Ejecuciones, señales y cambios de puntuación." />
       <div className="space-y-6">
         <Section title="Señales por día · 30 días" id="days">
           <DayBars rows={perDay} days={30} now={now} timeZone={tz} />

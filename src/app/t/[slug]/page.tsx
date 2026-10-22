@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { CategoryText, PLATFORM_LABELS, PlatformList, StageBadge, StatusText, TrustBadge } from "@/components/badges";
 import { Sparkline } from "@/components/charts";
 import { CompatLogo } from "@/components/compat-logos";
+import { ScoreHelp, TrustHelp } from "@/components/help";
+import { InfoTip } from "@/components/info-tip";
 import { RelTime } from "@/components/rel-time";
 import { ConfidenceText, ScoreMeter } from "@/components/score-meter";
 import { ExternalLink, NoDatabase, Notice, Section } from "@/components/ui";
@@ -112,7 +114,9 @@ export default async function TrendPage({ params }: { params: Params }) {
           </div>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="text-xs text-ink-2">Puntuación AI Radar</p>
+          <p className="flex items-center gap-1.5 text-xs text-ink-2">
+            Puntuación AI Radar <ScoreHelp align="right" />
+          </p>
           <ScoreMeter breakdown={t.breakdown} score={t.score} confidence={t.confidence} size="lg" />
           <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
             <dt className="text-ink-2">Confianza</dt>
@@ -135,8 +139,15 @@ export default async function TrendPage({ params }: { params: Params }) {
 
       {repo && repo.compat.length > 0 && (
         <div className="mb-6">
-          <Section title="Funciona con" id="compat">
-            <p className="mb-3 text-xs text-ink-3">Detectado en los topics, la descripción y el README del proyecto.</p>
+          <Section
+            title="Funciona con"
+            id="compat"
+            action={
+              <InfoTip label="Cómo se detecta" align="right">
+                Menciones explícitas en los topics, la descripción y el README del proyecto.
+              </InfoTip>
+            }
+          >
             <div className="space-y-3">
               {(Object.keys(COMPAT_KIND_LABELS) as CompatKind[])
                 .filter((k) => compatGroups[k]?.length)
@@ -160,15 +171,17 @@ export default async function TrendPage({ params }: { params: Params }) {
 
       {repo && (
         <div className="mb-6">
-          <Section title="Confianza y calidad" id="trust">
+          <Section title="Confianza y calidad" id="trust" action={<TrustHelp align="right" />}>
             {audit ? <AuditPanel audit={audit} stars={repo.stars} forks={repo.forks} timeZone={tz} /> : <p className="text-sm text-ink-2">Pendiente de auditoría: se audita en las próximas ejecuciones, empezando por los repositorios con más interés.</p>}
           </Section>
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title="Cómo se calcula la puntuación" id="score">
-          <div className="-mx-1 overflow-x-auto px-1">
+        <Section title="Desglose de la puntuación" id="score" action={<ScoreHelp align="right" />}>
+          <details>
+            <summary className="cursor-pointer text-sm font-medium text-signal">Ver los seis factores</summary>
+          <div className="-mx-1 mt-2 overflow-x-auto px-1">
             <table className="w-full text-sm">
               <caption className="sr-only">Desglose de la puntuación por factor</caption>
               <thead>
@@ -201,6 +214,7 @@ export default async function TrendPage({ params }: { params: Params }) {
               </tbody>
             </table>
           </div>
+          </details>
           {breakdown.missing?.length ? (
             <div className="mt-3">
               <Notice tone="warn">

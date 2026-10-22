@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { GithubExplorer } from "@/components/github-explorer";
+import { TrustHelp } from "@/components/help";
 import { NoDatabase, PageHeader } from "@/components/ui";
 import { guardDashboard } from "@/lib/auth";
 import { repoDataset } from "@/lib/datasets";
@@ -22,7 +23,8 @@ export default async function GithubPage() {
     <>
       <PageHeader
         title="Repositorios open source"
-        intro="Proyectos con tracción para construir mejores soluciones: ordénalos por estrellas, forks, crecimiento o fiabilidad. Cada uno se audita para detectar estrellas infladas, cuentas fantasma y binarios sospechosos."
+        intro="Proyectos con tracción, auditados contra estrellas infladas y binarios sospechosos."
+        help={<TrustHelp />}
       />
       <Suspense fallback={<p className="text-sm text-ink-2">Cargando repositorios…</p>}>
         <GithubExplorer data={data} timeZone={tz} />

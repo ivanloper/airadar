@@ -19,6 +19,8 @@ import { formatDate, periodRange } from "@/lib/time";
 import { CategoryText, StageBadge, TrustBadge } from "./badges";
 import { CompatRow } from "./compat-logos";
 import { ChipBar, DebouncedInput, SelectField } from "./fields";
+import { GrowthHelp } from "./help";
+import { InfoTip } from "./info-tip";
 import { RelTime } from "./rel-time";
 import { breakdownFromArrays, ScoreMeter } from "./score-meter";
 import { useNow, useUrlState } from "./url-state";
@@ -102,7 +104,13 @@ export function GithubExplorer({ data, timeZone }: { data: GithubData; timeZone:
         />
       </div>
       <div className="mb-4 space-y-2">
-        <p className="text-xs font-medium text-ink-2">Qué cuenta en el periodo</p>
+        <p className="flex items-center gap-1.5 text-xs font-medium text-ink-2">
+          Fecha que cuenta
+          <InfoTip label="Qué significa cada criterio">
+            Creados: nacieron en el periodo. Descubiertos: AI Radar los vio por primera vez. Con crecimiento: ganaron estrellas medidas.
+            Actualizados: recibieron commits.
+          </InfoTip>
+        </p>
         <ChipBar
           label="Criterio temporal"
           value={f.criterion}
@@ -193,9 +201,9 @@ export function GithubExplorer({ data, timeZone }: { data: GithubData; timeZone:
       </div>
 
       {growthPending && (
-        <p className="mb-4 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2.5 text-sm">
-          El crecimiento solo se cuenta con observaciones propias reales; el histórico empieza el{" "}
-          {data.firstSnapshotAt ? formatDate(data.firstSnapshotAt, timeZone, true) : "—"}. Mientras tanto se ordena por el promedio desde la creación, marcado como no validado.
+        <p className="mb-4 flex items-center gap-2 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
+          Histórico propio desde el {data.firstSnapshotAt ? formatDate(data.firstSnapshotAt, timeZone) : "—"}: crecimiento aún sin validar.
+          <GrowthHelp />
         </p>
       )}
 
@@ -240,7 +248,7 @@ function RepoCard({ r, period, criterion, timeZone }: { r: RepoRow; period: Peri
     ) : r.g24 !== null ? (
       <span className="text-amber">+{formatNumber(r.g24)} ★/día</span>
     ) : (
-      <span title="Promedio desde la creación; sin histórico propio todavía">~{formatNumber(r.avg)} ★/día (sin validar)</span>
+      <span title="Promedio desde la creación, sin validar con histórico propio">~{formatNumber(r.avg)} ★/día</span>
     );
   const risky = r.flags.filter((x) => x.l !== "info");
   return (
@@ -292,7 +300,6 @@ function RepoCard({ r, period, criterion, timeZone }: { r: RepoRow; period: Peri
         <CategoryText category={r.cat} />
         <span className="text-xs text-ink-3">{PROJECT_TYPES[r.type as keyof typeof PROJECT_TYPES] ?? r.type}</span>
         {r.lang && <span className="text-xs text-ink-3">{r.lang}</span>}
-        {r.license && <span className="text-xs text-ink-3">{r.license}</span>}
       </div>
 
       {risky.length > 0 && (

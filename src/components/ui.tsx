@@ -2,11 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { isSafeHttpUrl } from "@/lib/url";
 
-export function PageHeader({ title, intro, aside }: { title: string; intro?: ReactNode; aside?: ReactNode }) {
+export function PageHeader({ title, intro, aside, help }: { title: string; intro?: ReactNode; aside?: ReactNode; help?: ReactNode }) {
   return (
     <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-3xl">
-        <h1 className="display text-4xl font-semibold sm:text-5xl">{title}</h1>
+        <h1 className="display flex items-center gap-2 text-4xl font-semibold sm:text-5xl">
+          {title}
+          {help}
+        </h1>
         {intro && <p className="mt-2 text-sm leading-relaxed text-ink-2 sm:text-base">{intro}</p>}
       </div>
       {aside && <div className="shrink-0">{aside}</div>}

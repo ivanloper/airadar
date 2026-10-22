@@ -13,7 +13,9 @@ import { detectCompat } from "@/lib/compat";
 import { computeAudit, type AccountSample } from "@/lib/trust";
 
 const REAUDIT_DAYS = 3;
-const BATCH = 2;
+const BATCH = 1;
+/** Presupuesto de tiempo por ejecución: lo que no se audite ahora se audita en la siguiente. */
+const AUDIT_BUDGET_MS = 8 * 60_000;
 
 const USER_FIELDS = `createdAt followers { totalCount } following { totalCount } repositories(privacy: PUBLIC) { totalCount }`;
 const AUDIT_FIELDS = `
@@ -125,6 +127,10 @@ export async function auditRepos(deps: AuditDeps) {
   let audited = 0;
   let scorecards = 0;
   for (let i = 0; i < candidates.length; i += BATCH) {
+    if (Date.now() - started > AUDIT_BUDGET_MS) {
+      warnings.push(`Presupuesto de tiempo agotado tras ${audited} repositorios; el resto se audita en la próxima ejecución.`);
+      break;
+    }
     const batch = candidates.slice(i, i + BATCH);
     let nodes: (GqlAudit | null)[] = [];
     try {
@@ -137,7 +143,8 @@ export async function auditRepos(deps: AuditDeps) {
         }),
         fetchImpl: deps.fetch,
         sleep: deps.sleep,
-        timeoutMs: 45_000,
+        timeoutMs: 30_000,
+        retries: 1,
       });
       const body = (await res.json()) as { data?: { nodes: (GqlAudit | null)[] }; errors?: { message: string }[] };
       if (body.errors?.length) warnings.push(body.errors.slice(0, 2).map((e) => e.message).join("; "));
