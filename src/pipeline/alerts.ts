@@ -9,6 +9,7 @@ import { repositories, trendAnalyses, trends } from "@/db/schema";
 import type { AppConfig } from "@/lib/config";
 import { truncate } from "@/lib/text";
 import { parseAnalysis, VERDICTS } from "./analyze";
+import { isAdultContent } from "./autopublish";
 
 const MAX_PER_RUN = 5;
 
@@ -28,7 +29,7 @@ export function formatAlert(t: { title: string; score: number; summary: string; 
 export async function sendAlerts(db: Db, config: AppConfig, now: Date, fetchImpl: typeof fetch = fetch, log: (m: string) => void = () => {}) {
   if (!config.TELEGRAM_BOT_TOKEN || !config.TELEGRAM_CHAT_ID) return { sent: 0 };
   const rows = await db
-    .select({ t: trends, trust: repositories.trustScore, a: trendAnalyses })
+    .select({ t: trends, trust: repositories.trustScore, desc: repositories.description, topics: repositories.topics, a: trendAnalyses })
     .from(trends)
     .leftJoin(repositories, eq(repositories.id, trends.repoId))
     .leftJoin(trendAnalyses, eq(trendAnalyses.trendId, trends.id))
@@ -47,7 +48,11 @@ export async function sendAlerts(db: Db, config: AppConfig, now: Date, fetchImpl
 
   let sent = 0;
   const base = config.APP_URL.replace(/\/$/, "");
-  for (const { t, trust, a } of rows) {
+  for (const { t, trust, desc: description, topics, a } of rows) {
+    if (isAdultContent(t.title, t.summary, description, topics?.join(" "))) {
+      await db.update(trends).set({ alertedAt: now }).where(eq(trends.id, t.id)); // no se avisa, y no se vuelve a evaluar
+      continue;
+    }
     const analysis = a ? parseAnalysis(a.data) : null;
     const text = formatAlert(
       { title: t.title, score: t.score, summary: analysis?.resumen ?? t.summary, slug: t.slug },
