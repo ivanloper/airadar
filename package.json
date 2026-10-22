@@ -1,0 +1,48 @@
+{
+  "name": "ai-radar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Radar — inteligencia de tendencias, descubrimiento tecnológico y oportunidades",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "worker": "tsx src/worker/run.ts",
+    "rescore": "tsx src/worker/run.ts --rescore-only",
+    "build:static": "node scripts/build-static.mjs"
+  },
+  "dependencies": {
+    "@date-fns/tz": "^1.5.0",
+    "aws4fetch": "^1.0.20",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.4",
+    "fast-xml-parser": "^5.11.2",
+    "next": "^16.4.2",
+    "postgres": "^3.4.9",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "simple-icons": "^16.35.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.11",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

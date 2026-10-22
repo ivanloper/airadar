@@ -1,0 +1,109 @@
+# Recoge señales reales, audita repositorios, compila la web estática y la publica en GitHub Pages.
+# El histórico (Postgres) se conserva entre ejecuciones como volcado en la rama `data`.
+name: Actualizar y publicar AI Radar
+
+on:
+  schedule:
+    - cron: "17 */4 * * *" # cada 4 horas
+  workflow_dispatch:
+    inputs:
+      collect:
+        description: "Recoger datos nuevos de las fuentes (si no, solo recalcula y publica)"
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: airadar-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: airadar
+          POSTGRES_PASSWORD: airadar
+          POSTGRES_DB: airadar
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U airadar"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://airadar:airadar@localhost:5432/airadar
+      APP_TIMEZONE: Europe/Madrid
+      STORAGE_DRIVER: none
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PAGES_BASE_PATH: /${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Restaurar histórico desde la rama data
+        id: restore
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            git show origin/data:airadar.dump > airadar.dump
+            docker exec -i ${{ job.services.postgres.id }} pg_restore -U airadar -d airadar --no-owner --no-privileges < airadar.dump
+            echo "restored=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Sin histórico previo: primera ejecución."
+            echo "restored=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: npm run db:migrate
+
+      - name: Recoger y auditar señales
+        if: github.event_name == 'schedule' || steps.restore.outputs.restored != 'true' || (github.event_name == 'workflow_dispatch' && inputs.collect)
+        run: npm run worker
+
+      - name: Recalcular sin recoger
+        if: ${{ !(github.event_name == 'schedule' || steps.restore.outputs.restored != 'true' || (github.event_name == 'workflow_dispatch' && inputs.collect)) }}
+        run: npm run rescore
+
+      - name: Compilar la web estática
+        run: npm run build:static
+
+      - name: Guardar histórico en la rama data
+        run: |
+          docker exec ${{ job.services.postgres.id }} pg_dump -U airadar -d airadar -Fc --no-owner --no-privileges > /tmp/airadar.dump
+          mkdir -p /tmp/data && cp /tmp/airadar.dump /tmp/data/airadar.dump
+          cd /tmp/data
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add airadar.dump
+          git commit -q -m "Histórico AI Radar $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Paleta AI Radar: niebla fría + tinta marina; cobalto = señal, ámbar = aceleración. */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #e3e8ee;
+  --line: #cfd7e1;
+  --ink: #14202b;
+  --ink-2: #44525f;
+  --ink-3: #66727f;
+  --signal: #2747d9;
+  --signal-soft: #dfe5fb;
+  --on-signal: #ffffff;
+  --amber: #9a5b00;
+  --amber-fill: #e8a33d;
+  --ok: #1d7a4b;
+  --warn: #9a5800;
+  --err: #b42318;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1520;
+    --surface: #131e2c;
+    --surface-2: #1b293a;
+    --line: #2a3a4f;
+    --ink: #dfe6ef;
+    --ink-2: #a9b6c6;
+    --ink-3: #8593a6;
+    --signal: #8aa0ff;
+    --signal-soft: #1f2b57;
+    --on-signal: #0d1520;
+    --amber: #f2b655;
+    --amber-fill: #f2b655;
+    --ok: #4cc38a;
+    --warn: #f0a64a;
+    --err: #f27166;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1520;
+  --surface: #131e2c;
+  --surface-2: #1b293a;
+  --line: #2a3a4f;
+  --ink: #dfe6ef;
+  --ink-2: #a9b6c6;
+  --ink-3: #8593a6;
+  --signal: #8aa0ff;
+  --signal-soft: #1f2b57;
+  --on-signal: #0d1520;
+  --amber: #f2b655;
+  --amber-fill: #f2b655;
+  --ok: #4cc38a;
+  --warn: #f0a64a;
+  --err: #f27166;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
+  --color-on-signal: var(--on-signal);
+  --color-amber: var(--amber);
+  --color-amber-fill: var(--amber-fill);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-err: var(--err);
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cifras: ancho condensado del eje wdth de Instrument Sans + numerales tabulares. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-stretch: 78%;
+  font-variation-settings: "wdth" 78;
+}
+
+.display {
+  font-stretch: 75%;
+  font-variation-settings: "wdth" 75;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Tramo provisional del medidor: rayado = valor estimado sin evidencia directa. */
+.provisional {
+  background-image: repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
