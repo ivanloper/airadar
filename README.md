@@ -4,6 +4,7 @@
 
 - Web: https://ivanloper.github.io/airadar/
 - Creado por [@ivanloper](https://github.com/ivanloper)
+- Estado, cómo retomar el proyecto y siguientes pasos: [docs/ESTADO.md](docs/ESTADO.md)
 
 Detectar → Normalizar → Relacionar → Puntuar → Auditar → Priorizar → Publicar.
 
