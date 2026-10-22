@@ -296,6 +296,8 @@ export interface WebRow {
   points: number | null;
   comments: number | null;
   slug: string | null;
+  /** Hay ficha propia (en GitHub Pages solo se generan las de los últimos 30 días y las publicadas). */
+  hasPage: boolean;
   cat: string | null;
   score: number | null;
   conf: number | null;
@@ -304,8 +306,10 @@ export interface WebRow {
   plats: string[];
 }
 
-export async function webDataset(db: Db, now: Date) {
-  const since = new Date(now.getTime() - 31 * 86_400_000);
+/** Señales web de los últimos `days` días. Para periodos largos, extractos más cortos (carga bajo demanda). */
+export async function webDataset(db: Db, now: Date, days = 31) {
+  const since = new Date(now.getTime() - days * 86_400_000);
+  const excerptLen = days > 31 ? 140 : 200;
   const rows = await db
     .select({ s: signals, sourceName: sources.name, official: sources.official, t: trends })
     .from(signals)
@@ -313,7 +317,7 @@ export async function webDataset(db: Db, now: Date) {
     .leftJoin(trends, eq(trends.id, signals.trendId))
     .where(and(inArray(signals.platform, ["web", "hackernews"]), sql`coalesce(${signals.publishedAt}, ${signals.observedAt}) >= ${tsParam(since)}`))
     .orderBy(desc(sql`coalesce(${signals.publishedAt}, ${signals.observedAt})`))
-    .limit(1500);
+    .limit(days > 31 ? 15000 : 1500);
   const data: WebRow[] = rows.map(({ s, sourceName, official, t }) => ({
     id: s.id,
     title: s.title,
@@ -326,10 +330,11 @@ export async function webDataset(db: Db, now: Date) {
     kind: s.kind,
     published: s.publishedAt?.toISOString() ?? null,
     observed: s.observedAt.toISOString(),
-    excerpt: s.excerpt ? truncate(s.excerpt, 200) : null,
+    excerpt: s.excerpt ? truncate(s.excerpt, excerptLen) : null,
     points: s.metrics.points ?? null,
     comments: s.metrics.comments ?? null,
     slug: t?.slug ?? null,
+    hasPage: Boolean(t) && (!IS_STATIC || t!.status === "published" || t!.lastSignalAt.getTime() >= now.getTime() - 30 * 86_400_000),
     cat: t?.category ?? null,
     score: t?.score ?? null,
     conf: t?.confidence ?? null,

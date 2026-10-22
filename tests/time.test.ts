@@ -40,3 +40,13 @@ describe("periodRange (HOY / ESTA SEMANA / ESTE MES)", () => {
     expect(periodRange("today", now, "UTC").start.toISOString()).toBe("2026-10-22T00:00:00.000Z");
   });
 });
+
+describe("periodos largos", () => {
+  const now = new Date("2026-10-22T10:00:00Z");
+  it("3 meses, 6 meses y último año cuentan días naturales locales", () => {
+    expect(periodRange("quarter", now, TZ).start.toISOString()).toBe("2026-07-24T22:00:00.000Z");
+    expect(periodRange("half", now, TZ).start.toISOString()).toBe("2026-04-25T22:00:00.000Z");
+    // Hace 364 días era horario de verano (CEST): medianoche = 22:00Z del día anterior.
+    expect(periodRange("year", now, TZ).start.toISOString()).toBe("2025-10-22T22:00:00.000Z");
+  });
+});

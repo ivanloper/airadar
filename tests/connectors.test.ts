@@ -100,3 +100,46 @@ describe("fetchWithRetry", () => {
     await expect(fetchWithRetry("https://api.example.com", { fetchImpl: f as unknown as typeof fetch, sleep })).rejects.toThrow(/cuota/);
   });
 });
+
+describe("recarga histórica", () => {
+  it("Hacker News recorre semanas hacia atrás con un listón de puntos más alto", async () => {
+    const { hackerNewsConnector } = await import("@/connectors/hackernews");
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string) => {
+      urls.push(decodeURIComponent(url));
+      return new Response(JSON.stringify({ hits: [], nbPages: 1 }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const ctx = {
+      source: { key: "hackernews", config: {} },
+      now,
+      fetch: fetchImpl,
+      sleep: async () => {},
+      log: () => {},
+      backfillDays: 28,
+    } as unknown as Parameters<typeof hackerNewsConnector.collect>[0];
+    await hackerNewsConnector.collect(ctx);
+    expect(urls).toHaveLength(4);
+    expect(urls.every((u) => u.includes("points>=100"))).toBe(true);
+  });
+
+  it("RSS conserva hasta un año e ignora la caché en la recarga", async () => {
+    const { rssConnector } = await import("@/connectors/rss");
+    const old = RSS.replace("Mon, 01 Jan 2024 00:00:00 GMT", "Mon, 01 Jun 2026 00:00:00 GMT");
+    let sentEtag: string | null = "unset";
+    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+      sentEtag = new Headers(init?.headers).get("if-none-match");
+      return new Response(old, { status: 200 });
+    }) as unknown as typeof fetch;
+    const ctx = {
+      source: { key: "rss:x", url: "https://example.com/feed", config: { etag: '"abc"' } },
+      now,
+      fetch: fetchImpl,
+      sleep: async () => {},
+      log: () => {},
+      backfillDays: 365,
+    } as unknown as Parameters<typeof rssConnector.collect>[0];
+    const r = await rssConnector.collect(ctx);
+    expect(sentEtag).toBeNull();
+    expect(r.signals.map((s) => s.title)).toContain("Too old");
+  });
+});

@@ -87,7 +87,8 @@ export function parseFeed(xml: string): ParsedFeedItem[] {
 }
 
 export function feedItemsToSignals(items: ParsedFeedItem[], cfg: RssSourceConfig, now: Date): SignalInput[] {
-  const maxAge = (cfg.maxAgeDays ?? 30) * 86_400_000;
+  // Se conserva hasta un año de entradas para tener registro histórico.
+  const maxAge = (cfg.maxAgeDays ?? 365) * 86_400_000;
   const out: SignalInput[] = [];
   for (const it of items) {
     if (!it.title || !isSafeHttpUrl(it.link)) continue;
@@ -121,7 +122,11 @@ export const rssConnector: Connector = {
   async collect(ctx: ConnectorContext): Promise<CollectResult> {
     const url = ctx.source.url;
     if (!url || !isSafeHttpUrl(url)) throw new Error("La fuente RSS no tiene una URL http(s) válida.");
-    const cfg = ctx.source.config as RssSourceConfig;
+    const stored = ctx.source.config as RssSourceConfig;
+    // En una recarga histórica se ignora la caché (ETag) y se conserva todo lo que traiga el feed.
+    const cfg: RssSourceConfig = ctx.backfillDays
+      ? { ...stored, etag: undefined, lastModified: undefined, maxItems: 500, maxAgeDays: ctx.backfillDays }
+      : stored;
     const headers: Record<string, string> = { accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9" };
     if (cfg.etag) headers["if-none-match"] = cfg.etag;
     if (cfg.lastModified) headers["if-modified-since"] = cfg.lastModified;

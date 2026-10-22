@@ -67,6 +67,8 @@ export interface ConnectorContext {
   fetch: typeof fetch;
   sleep: (ms: number) => Promise<void>;
   log: (msg: string) => void;
+  /** Recarga histórica única: recoger hacia atrás estos días (0 = ejecución normal). */
+  backfillDays?: number;
 }
 
 export interface ConnectorStatus {

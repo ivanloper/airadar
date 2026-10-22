@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { WebRow } from "@/lib/datasets";
 import { CATEGORIES } from "@/lib/taxonomy";
 import { formatNumber } from "@/lib/text";
 import { hostOf } from "@/lib/url";
-import { isPeriod, PERIOD_LABELS, PERIODS, periodRange, type Period } from "@/lib/time";
+import { ALL_PERIODS, isAnyPeriod, LONG_PERIODS, PERIOD_LABELS, periodRange, type AnyPeriod, type LongPeriod } from "@/lib/time";
 import { CategoryText, PLATFORM_LABELS } from "./badges";
 import { ChipBar, SelectField } from "./fields";
 import { RelTime } from "./rel-time";
@@ -29,7 +29,27 @@ export function WebExplorer({
   const now = useNow(generatedAt);
   const [limit, setLimit] = useState(PAGE);
   const p = sp.get("period");
-  const period: Period = isPeriod(p) ? p : "week";
+  const period: AnyPeriod = isAnyPeriod(p) ? p : "week";
+  const isLong = (LONG_PERIODS as readonly string[]).includes(period);
+  // Periodos largos: se descargan bajo demanda y se guardan en memoria.
+  const [extra, setExtra] = useState<Partial<Record<LongPeriod, WebRow[]>>>({});
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  useEffect(() => {
+    if (!isLong || extra[period as LongPeriod]) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
+    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/datos/web/${period}.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: { rows: WebRow[] }) => !cancelled && setExtra((e) => ({ ...e, [period]: d.rows })))
+      .catch(() => !cancelled && setLoadError(true))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [isLong, period, extra]);
+  const sourceRows = isLong ? (extra[period as LongPeriod] ?? data.rows) : data.rows;
   const source = sp.get("source") ?? "";
   const category = sp.get("category") ?? "";
   const kind = sp.get("kind") ?? "";
@@ -38,12 +58,12 @@ export function WebExplorer({
   const rows = useMemo(() => {
     const start = periodRange(period, now, timeZone).start.getTime();
     const when = (r: WebRow) => Date.parse(r.published ?? r.observed);
-    const list = data.rows.filter(
+    const list = sourceRows.filter(
       (r) => when(r) >= start && (!source || r.sourceKey === source) && (!category || r.cat === category) && (!kind || r.kind === kind),
     );
     const key = { recent: when, score: (r: WebRow) => r.score ?? -1, points: (r: WebRow) => r.points ?? -1 }[sort];
     return list.sort((a, b) => key(b) - key(a) || b.id - a.id);
-  }, [data.rows, period, source, category, kind, sort, now, timeZone]);
+  }, [sourceRows, period, source, category, kind, sort, now, timeZone]);
 
   const update = (patch: Record<string, string | undefined>) => {
     setLimit(PAGE);
@@ -57,9 +77,14 @@ export function WebExplorer({
           label="Periodo"
           value={period}
           onSelect={(v) => update({ period: v === "week" ? undefined : v })}
-          items={PERIODS.map((x) => ({ value: x, label: PERIOD_LABELS[x] }))}
+          items={ALL_PERIODS.map((x) => ({ value: x, label: PERIOD_LABELS[x] }))}
         />
       </div>
+      {isLong && (loading || loadError) && (
+        <p role="status" className={`mb-4 text-sm ${loadError ? "text-err" : "text-ink-2"}`}>
+          {loadError ? "No se pudo cargar el histórico. Inténtalo de nuevo más tarde." : `Cargando ${PERIOD_LABELS[period].toLowerCase()}…`}
+        </p>
+      )}
       <div className="mb-5 grid grid-cols-1 gap-3 rounded-xl border border-line bg-surface p-3 min-[400px]:grid-cols-2 md:grid-cols-4">
         <SelectField label="Fuente" value={source} placeholder="Todas" onChange={(v) => update({ source: v })} options={data.sourceList.map((s) => ({ value: s.key, label: s.name }))} />
         <SelectField label="Categoría" value={category} placeholder="Todas" onChange={(v) => update({ category: v })} options={Object.entries(CATEGORIES).map(([value, label]) => ({ value, label }))} />
@@ -77,13 +102,19 @@ export function WebExplorer({
       </div>
 
       <p className="mb-3 text-sm text-ink-2" aria-live="polite">
-        <span className="num font-semibold text-ink">{formatNumber(rows.length)}</span> señales
+        {isLong && !extra[period as LongPeriod] ? (
+          "Cargando…"
+        ) : (
+          <>
+            <span className="num font-semibold text-ink">{formatNumber(rows.length)}</span> señales
+          </>
+        )}
       </p>
       {rows.length ? (
         <ul className="space-y-3">
           {rows.slice(0, limit).map((s) => (
             <li key={s.id} className="rounded-xl border border-line bg-surface p-3.5 sm:p-4">
-              {s.slug ? (
+              {s.slug && s.hasPage ? (
                 <Link href={`/t/${s.slug}`} className="block break-words font-semibold leading-snug hover:text-signal">
                   {s.title}
                 </Link>

@@ -26,6 +26,7 @@ export interface HnConfig {
   minPoints?: number;
   maxPages?: number;
   requireRelevance?: boolean;
+  backfillMinPoints?: number;
 }
 
 export function hnHitToSignal(hit: HnHit, cfg: HnConfig): SignalInput | null {
@@ -58,23 +59,39 @@ export const hackerNewsConnector: Connector = {
   },
   async collect(ctx: ConnectorContext): Promise<CollectResult> {
     const cfg = ctx.source.config as HnConfig;
-    const since = Math.floor(ctx.now.getTime() / 1000) - (cfg.lookbackHours ?? 72) * 3600;
-    const minPoints = cfg.minPoints ?? 30;
+    const nowSec = Math.floor(ctx.now.getTime() / 1000);
     const signals: SignalInput[] = [];
     const raw: unknown[] = [];
     const warnings: string[] = [];
-    for (let page = 0; page < (cfg.maxPages ?? 3); page++) {
-      const url =
-        `https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=100&page=${page}` +
-        `&numericFilters=${encodeURIComponent(`created_at_i>${since},points>=${minPoints}`)}`;
-      const res = await fetchWithRetry(url, { fetchImpl: ctx.fetch, sleep: ctx.sleep });
-      const data = (await res.json()) as { hits: HnHit[]; nbPages: number };
-      raw.push({ page, hits: data.hits });
-      for (const hit of data.hits) {
-        const s = hnHitToSignal(hit, cfg);
-        if (s) signals.push(s);
+
+    const collectWindow = async (from: number, to: number, minPoints: number, maxPages: number) => {
+      for (let page = 0; page < maxPages; page++) {
+        const url =
+          `https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=100&page=${page}` +
+          `&numericFilters=${encodeURIComponent(`created_at_i>${from},created_at_i<=${to},points>=${minPoints}`)}`;
+        const res = await fetchWithRetry(url, { fetchImpl: ctx.fetch, sleep: ctx.sleep });
+        const data = (await res.json()) as { hits: HnHit[]; nbPages: number };
+        raw.push({ from, to, page, hits: data.hits.length });
+        for (const hit of data.hits) {
+          const s = hnHitToSignal(hit, cfg);
+          if (s) signals.push(s);
+        }
+        if (page + 1 >= data.nbPages) break;
       }
-      if (page + 1 >= data.nbPages) break;
+    };
+
+    if (ctx.backfillDays) {
+      // Recarga histórica por semanas; listón más alto para quedarse con lo que tuvo impacto.
+      const week = 7 * 86_400;
+      for (let to = nowSec; to > nowSec - ctx.backfillDays * 86_400; to -= week) {
+        try {
+          await collectWindow(to - week, to, cfg.backfillMinPoints ?? 100, 3);
+        } catch (err) {
+          warnings.push(`Semana hasta ${new Date(to * 1000).toISOString().slice(0, 10)}: ${(err as Error).message}`);
+        }
+      }
+    } else {
+      await collectWindow(nowSec - (cfg.lookbackHours ?? 72) * 3600, nowSec, cfg.minPoints ?? 30, cfg.maxPages ?? 3);
     }
     ctx.log(`Hacker News: ${signals.length} historias relevantes`);
     return { signals, repos: [], raw, warnings };

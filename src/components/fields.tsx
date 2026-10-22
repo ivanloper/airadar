@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const control = "h-10 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 text-sm text-ink sm:h-9";
 
@@ -90,8 +90,17 @@ export function ChipBar({
   value: string;
   onSelect: (v: string) => void;
 }) {
+  const bar = useRef<HTMLDivElement>(null);
+  // En móvil la fila se desplaza: el chip activo siempre queda a la vista.
+  useEffect(() => {
+    const el = bar.current?.querySelector<HTMLElement>('[aria-checked="true"]');
+    const box = bar.current;
+    if (!el || !box || box.scrollWidth <= box.clientWidth) return;
+    const offset = el.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft;
+    box.scrollTo({ left: offset - box.clientWidth / 2 + el.offsetWidth / 2, behavior: "smooth" });
+  }, [value]);
   return (
-    <div role="radiogroup" aria-label={label} className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+    <div ref={bar} role="radiogroup" aria-label={label} className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
       {items.map((it) => {
         const active = it.value === value;
         return (

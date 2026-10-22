@@ -3,18 +3,30 @@ import { startOfDay, subDays } from "date-fns";
 
 export const PERIODS = ["today", "week", "month"] as const;
 export type Period = (typeof PERIODS)[number];
+/** Periodos largos para consultar el histórico (se cargan bajo demanda). */
+export const LONG_PERIODS = ["quarter", "half", "year"] as const;
+export type LongPeriod = (typeof LONG_PERIODS)[number];
+export type AnyPeriod = Period | LongPeriod;
+export const ALL_PERIODS = [...PERIODS, ...LONG_PERIODS] as const;
 
-export const PERIOD_LABELS: Record<Period, string> = {
+export const PERIOD_LABELS: Record<AnyPeriod, string> = {
   today: "Hoy",
   week: "Esta semana",
   month: "Este mes",
+  quarter: "3 meses",
+  half: "6 meses",
+  year: "Último año",
 };
 
 /** Días naturales (incluido hoy) que cubre cada periodo. */
-const PERIOD_DAYS: Record<Period, number> = { today: 1, week: 7, month: 30 };
+export const PERIOD_DAYS: Record<AnyPeriod, number> = { today: 1, week: 7, month: 30, quarter: 90, half: 180, year: 365 };
 
 export function isPeriod(v: unknown): v is Period {
   return typeof v === "string" && (PERIODS as readonly string[]).includes(v);
+}
+
+export function isAnyPeriod(v: unknown): v is AnyPeriod {
+  return typeof v === "string" && (ALL_PERIODS as readonly string[]).includes(v);
 }
 
 /**
@@ -22,10 +34,11 @@ export function isPeriod(v: unknown): v is Period {
  *  - today: desde las 00:00 locales de hoy.
  *  - week:  desde las 00:00 locales de hace 6 días (7 días naturales, incluido hoy).
  *  - month: desde las 00:00 locales de hace 29 días (30 días naturales, incluido hoy).
+ *  - quarter / half / year: 90, 180 y 365 días naturales, con la misma regla.
  * `end` es el instante actual. El cálculo se hace en calendario local, por lo que
  * los cambios de horario (DST) no desplazan los límites.
  */
-export function periodRange(period: Period, now: Date, timeZone: string): { start: Date; end: Date } {
+export function periodRange(period: AnyPeriod, now: Date, timeZone: string): { start: Date; end: Date } {
   const localNow = new TZDate(now.getTime(), timeZone);
   const start = subDays(startOfDay(localNow), PERIOD_DAYS[period] - 1);
   return { start: new Date(start.getTime()), end: new Date(now.getTime()) };

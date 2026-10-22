@@ -200,7 +200,11 @@ export async function refreshTrends(db: Db, config: AppConfig, now: Date, opts: 
       platforms: input.platforms,
       timeZone: config.APP_TIMEZONE,
     };
-    const lastSignalAt = new Date(Math.max(...sigs.map((s) => s.lastObservedAt.getTime())));
+    // Fecha de la última señal: publicación original en web/HN (el histórico recargado no parece reciente);
+    // en GitHub, la última observación (el repo sigue vivo aunque se creara hace años).
+    const lastSignalAt = new Date(
+      Math.min(now.getTime(), Math.max(...sigs.map((s) => (s.platform === "github" ? s.lastObservedAt : (s.publishedAt ?? s.lastObservedAt)).getTime()))),
+    );
 
     const patch = {
       kind: input.kind,
