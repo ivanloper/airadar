@@ -19,7 +19,7 @@ export default async function WebPage() {
     <>
       <PageHeader
         title="Web y lanzamientos"
-        intro="Anuncios oficiales, Product Hunt, investigación, SEO y Hacker News. Cada entrada enlaza a su fuente; AI Radar solo guarda un extracto breve."
+        intro="Anuncios oficiales, lanzamientos, investigación y SEO, enlazados a su fuente."
       />
       <Suspense>
         <WebExplorer data={data} timeZone={tz} generatedAt={now.toISOString()} />

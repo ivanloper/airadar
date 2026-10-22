@@ -8,6 +8,8 @@ import { formatNumber } from "@/lib/text";
 import { isPeriod, PERIOD_LABELS, PERIODS, type Period } from "@/lib/time";
 import { PLATFORM_LABELS, StatusDot } from "./badges";
 import { DayBars, Distribution } from "./charts";
+import { GrowthHelp, ScoreHelp } from "./help";
+import { InfoTip } from "./info-tip";
 import { CompatRow } from "./compat-logos";
 import { SelectField, DebouncedInput } from "./fields";
 import { RelTime } from "./rel-time";
@@ -83,16 +85,13 @@ export function OverviewView({ data, timeZone, generatedAt }: { data: Data; time
         <div className="min-w-0 space-y-6">
           <section aria-labelledby="top-h" className="rounded-xl border border-line bg-surface p-4 sm:p-5">
             <div className="mb-1 flex items-baseline justify-between gap-3">
-              <h2 id="top-h" className="text-base font-semibold">
-                Lo más relevante
+              <h2 id="top-h" className="flex items-center gap-2 text-base font-semibold">
+                Lo más relevante <ScoreHelp />
               </h2>
               <Link href="/oportunidades" className="shrink-0 text-sm text-signal">
                 Oportunidades
               </Link>
             </div>
-            <p className="mb-2 text-xs text-ink-3">
-              Barra: utilidad, novedad, potencial, <span className="text-amber">adopción</span>, madurez y relevancia. El rayado indica una estimación provisional.
-            </p>
             {top.length ? (
               <ol>
                 {top.map((t, i) => (
@@ -105,8 +104,8 @@ export function OverviewView({ data, timeZone, generatedAt }: { data: Data; time
           </section>
 
           <section aria-labelledby="acc-h" className="rounded-xl border border-line bg-surface p-4 sm:p-5">
-            <h2 id="acc-h" className="mb-2 text-base font-semibold">
-              Mayor aceleración medida
+            <h2 id="acc-h" className="mb-2 flex items-center gap-2 text-base font-semibold">
+              Mayor aceleración <GrowthHelp />
             </h2>
             {data.accelerating.length ? (
               <ul className="divide-y divide-line">
@@ -127,9 +126,7 @@ export function OverviewView({ data, timeZone, generatedAt }: { data: Data; time
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-ink-2">
-                La aceleración se mide comparando observaciones propias separadas al menos 20 horas. Aparecerá tras el primer día de ejecuciones; hasta entonces solo se muestra el promedio desde la creación, marcado como no validado.
-              </p>
+              <p className="text-sm text-ink-2">Aparecerá tras 24 h de observaciones propias.</p>
             )}
           </section>
 
@@ -168,11 +165,13 @@ export function OverviewView({ data, timeZone, generatedAt }: { data: Data; time
 
         <div className="min-w-0 space-y-6">
           <section aria-labelledby="tl-h" className="rounded-xl border border-line bg-surface p-4 sm:p-5">
-            <h2 id="tl-h" className="mb-3 text-base font-semibold">
+            <h2 id="tl-h" className="mb-3 flex items-center gap-2 text-base font-semibold">
               Evolución, 30 días
+              <InfoTip label="Qué fecha se usa" align="right">
+                Fecha de publicación original de cada señal; si la fuente no la indica, la de detección.
+              </InfoTip>
             </h2>
             <DayBars rows={data.timeline} days={30} now={now} timeZone={timeZone} />
-            <p className="mt-2 text-xs text-ink-3">Por fecha de publicación original; si la fuente no la indica, por fecha de detección.</p>
           </section>
           <section aria-labelledby="pl-h" className="rounded-xl border border-line bg-surface p-4 sm:p-5">
             <h2 id="pl-h" className="mb-3 text-base font-semibold">

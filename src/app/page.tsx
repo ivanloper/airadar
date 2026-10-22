@@ -19,10 +19,8 @@ export default async function OverviewPage() {
     <>
       <header className="mb-8 max-w-3xl">
         <h1 className="display text-[2.6rem] font-semibold sm:text-6xl">El mejor open source para crear con IA</h1>
-        <p className="mt-4 text-base leading-relaxed text-ink-2 sm:text-lg">
-          AI Radar rastrea GitHub, Hacker News y fuentes oficiales para que creadores digitales encuentren repositorios,
-          herramientas y lanzamientos fiables con los que construir mejores soluciones. Cada proyecto se puntúa con evidencias
-          y se audita para detectar popularidad inflada.
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-2 sm:text-lg">
+          Repositorios, herramientas y lanzamientos con evidencias y auditados contra la popularidad inflada.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link href="/github" className="inline-flex h-11 items-center rounded-xl bg-signal px-5 text-sm font-semibold text-on-signal hover:opacity-90">

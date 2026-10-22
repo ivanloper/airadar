@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OpportunityList } from "@/components/opportunity-list";
+import { InfoTip } from "@/components/info-tip";
 import { NoDatabase, PageHeader } from "@/components/ui";
 import { guardDashboard } from "@/lib/auth";
 import { opportunityDataset } from "@/lib/datasets";
@@ -19,7 +20,12 @@ export default async function OpportunitiesPage() {
     <>
       <PageHeader
         title="Oportunidades"
-        intro="Qué merece la pena probar, aprender o convertir en producto. Ordenadas por puntuación ajustada por confianza y fiabilidad. Son hipótesis respaldadas por evidencias, no predicciones."
+        intro="Qué probar, aprender o convertir en producto."
+        help={
+          <InfoTip label="Cómo se ordenan">
+            Por puntuación ajustada por confianza y fiabilidad del repositorio. Son hipótesis con evidencias, no predicciones: cada ficha indica qué datos faltan.
+          </InfoTip>
+        }
       />
       <Suspense>
         <OpportunityList rows={rows} />
