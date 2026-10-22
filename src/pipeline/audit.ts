@@ -113,7 +113,12 @@ export async function auditRepos(deps: AuditDeps) {
         or(isNull(repositories.auditedAt), lt(repositories.auditedAt, staleBefore)),
       ),
     )
-    .orderBy(desc(sql`coalesce(${trends.score}, 0)`), desc(repositories.stars), asc(repositories.id))
+    // Primero lo más visible: lo mejor puntuado y lo que encabeza los rankings por estrellas (≈ 1k ★ → 55, ≥ 250k ★ → 100).
+    .orderBy(
+      desc(sql`greatest(coalesce(${trends.score}, 0), least(100, ln(1 + ${repositories.stars}) * 8))`),
+      desc(repositories.stars),
+      asc(repositories.id),
+    )
     .limit(deps.limit ?? config.GITHUB_MAX_AUDITS);
 
   const warnings: string[] = [];
