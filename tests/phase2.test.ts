@@ -143,13 +143,13 @@ describe("publicación automática con control de calidad", () => {
   const cfg = { PUBLISH_MIN_SCORE: 75, PUBLISH_MIN_CONFIDENCE: 0.58 };
   const analysis = analysisSchema.parse(ANALYSIS);
   it("explica por qué no se publica", () => {
-    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x" }, { trustScore: null }, analysis, cfg, true)).toContain("repositorio sin auditar");
-    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x" }, { trustScore: 60 }, analysis, cfg, true)[0]).toMatch(/confianza del repositorio/);
-    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x" }, { trustScore: 90 }, null, cfg, true)).toContain("sin análisis");
-    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x" }, { trustScore: 90 }, { ...analysis, veredicto: "descartar" }, cfg, true)).toContain(
+    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x", title: "t" }, { trustScore: null }, analysis, cfg, true)).toContain("repositorio sin auditar");
+    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x", title: "t" }, { trustScore: 60 }, analysis, cfg, true)[0]).toMatch(/confianza del repositorio/);
+    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x", title: "t" }, { trustScore: 90 }, null, cfg, true)).toContain("sin análisis");
+    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x", title: "t" }, { trustScore: 90 }, { ...analysis, veredicto: "descartar" }, cfg, true)).toContain(
       "el análisis recomienda descartar",
     );
-    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x" }, { trustScore: 90 }, analysis, cfg, true)).toEqual([]);
+    expect(publicationGate({ score: 80, confidence: 0.6, summary: "x", title: "t" }, { trustScore: 90 }, analysis, cfg, true)).toEqual([]);
   });
 
   it("publica solo lo que supera todos los umbrales", async () => {
@@ -209,5 +209,17 @@ describe("proveedor Gemini", () => {
     expect((r.data as { veredicto: string }).veredicto).toBe("probar");
     expect(p.model).toBe("modelo-b");
     expect(urls).toHaveLength(2);
+  });
+});
+
+describe("filtro de contenido adulto", () => {
+  it("bloquea la publicación y no confunde palabras comunes", async () => {
+    const { isAdultContent } = await import("@/pipeline/autopublish");
+    expect(isAdultContent("qwen21-nsfw-pose-skill")).toBe(true);
+    expect(isAdultContent("Pose skill", "generate sexy images")).toBe(true);
+    expect(isAdultContent("Sussex weather MCP", "Essex", "unisex design system")).toBe(false);
+    expect(publicationGate({ score: 90, confidence: 0.7, summary: "x", title: "nsfw-pack" }, { trustScore: 95 }, null, { PUBLISH_MIN_SCORE: 75, PUBLISH_MIN_CONFIDENCE: 0.58 }, false)).toContain(
+      "contenido adulto",
+    );
   });
 });

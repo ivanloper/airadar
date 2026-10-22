@@ -11,15 +11,23 @@ import { PublicationError, transitionTrend } from "./publication";
 
 export const MIN_TRUST_TO_PUBLISH = 80;
 
+const ADULT = /(?<![a-z])(nsfw|porn\w*|nudes?|nudity|hentai|xxx|onlyfans|erotic\w*|sexual|sex(?:ting|y)?|lewd|r18|18\+)(?![a-z])/i;
+
+/** Contenido adulto: nunca se publica ni se alerta automáticamente (queda para revisión humana). */
+export function isAdultContent(...texts: (string | null | undefined)[]) {
+  return ADULT.test(texts.filter(Boolean).join(" ").replace(/[-_]/g, " "));
+}
+
 /** Motivos por los que una tendencia NO puede publicarse automáticamente (vacío = apta). */
 export function publicationGate(
-  t: Pick<Trend, "score" | "confidence" | "summary">,
-  repo: Pick<Repository, "trustScore"> | null,
+  t: Pick<Trend, "score" | "confidence" | "summary" | "title">,
+  repo: (Pick<Repository, "trustScore"> & Partial<Pick<Repository, "description" | "topics">>) | null,
   analysis: Analysis | null,
   config: Pick<AppConfig, "PUBLISH_MIN_SCORE" | "PUBLISH_MIN_CONFIDENCE">,
   aiEnabled: boolean,
 ): string[] {
   const reasons: string[] = [];
+  if (isAdultContent(t.title, t.summary, repo?.description, repo?.topics?.join(" "))) reasons.push("contenido adulto");
   if (t.score < config.PUBLISH_MIN_SCORE) reasons.push(`puntuación ${t.score} < ${config.PUBLISH_MIN_SCORE}`);
   if (t.confidence < config.PUBLISH_MIN_CONFIDENCE) reasons.push(`confianza ${t.confidence} < ${config.PUBLISH_MIN_CONFIDENCE}`);
   if (!t.summary.trim()) reasons.push("sin resumen");
@@ -43,6 +51,19 @@ export async function autoPublish(db: Db, config: AppConfig, now: Date, aiEnable
     .leftJoin(repositories, eq(repositories.id, trends.repoId))
     .leftJoin(trendAnalyses, eq(trendAnalyses.trendId, trends.id))
     .where(and(inArray(trends.status, ["detected", "pending_review", "approved"]), gte(trends.score, config.PUBLISH_MIN_SCORE)));
+
+  // Retira publicaciones automáticas que ya no pasan el filtro de contenido (p. ej. tras endurecerlo).
+  const live = await db
+    .select({ t: trends, r: repositories })
+    .from(trends)
+    .leftJoin(repositories, eq(repositories.id, trends.repoId))
+    .where(eq(trends.status, "published"));
+  for (const { t, r } of live) {
+    if (isAdultContent(t.title, t.summary, r?.description, r?.topics.join(" "))) {
+      await transitionTrend(db, t.id, "archived", { actor: "system", note: "Retirada: contenido adulto no apto para publicación automática.", now });
+      log(`Retirada: ${t.title}`);
+    }
+  }
 
   let published = 0;
   for (const { t, r, a } of rows) {
