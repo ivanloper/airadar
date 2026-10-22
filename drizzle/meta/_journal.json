@@ -22,6 +22,13 @@
       "when": 1792626975835,
       "tag": "0002_audit_engagement",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792650273215,
+      "tag": "0003_ai_analysis",
+      "breakpoints": true
     }
   ]
 }

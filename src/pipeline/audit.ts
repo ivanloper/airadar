@@ -230,6 +230,7 @@ export async function auditRepos(deps: AuditDeps) {
           scorecard: sc?.score ?? null,
           scorecardChecks: sc?.checks ?? null,
           lurePatterns: result.lurePatterns,
+        readmeExcerpt: readme ? readme.slice(0, 4000) : null,
           flags: result.flags,
           trustScore: result.trustScore,
           qualityScore: result.qualityScore,

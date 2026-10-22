@@ -144,6 +144,8 @@ export const repoAudits = pgTable("repo_audits", {
   scorecard: real("scorecard"),
   scorecardChecks: jsonb("scorecard_checks").$type<{ name: string; score: number }[]>(),
   lurePatterns: text("lure_patterns").array().notNull().default([]),
+  /** Primeros caracteres del README (texto externo no confiable; solo para análisis). */
+  readmeExcerpt: text("readme_excerpt"),
   flags: jsonb("flags").$type<{ code: string; level: "info" | "warn" | "high"; message: string }[]>().notNull().default([]),
   trustScore: integer("trust_score").notNull(),
   qualityScore: integer("quality_score").notNull(),
@@ -201,6 +203,7 @@ export const trends = pgTable(
     lastSignalAt: ts("last_signal_at").notNull().defaultNow(),
     scoredAt: ts("scored_at"),
     publishedAt: ts("published_at"),
+    alertedAt: ts("alerted_at"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [
@@ -243,6 +246,42 @@ export const signals = pgTable(
     index("signals_trend_idx").on(t.trendId),
     index("signals_observed_idx").on(t.observedAt),
   ],
+);
+
+/** Análisis generado por IA (último por tendencia). Se regenera solo si cambian las entradas. */
+export const trendAnalyses = pgTable(
+  "trend_analyses",
+  {
+    trendId: integer("trend_id")
+      .primaryKey()
+      .references(() => trends.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    inputsHash: text("inputs_hash").notNull(),
+    signalCount: integer("signal_count").notNull().default(0),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("trend_analyses_created_idx").on(t.createdAt)],
+);
+
+/** Registro de consumo de IA (para el límite diario de tokens). */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: serial("id").primaryKey(),
+    at: ts("at").notNull().defaultNow(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    purpose: text("purpose").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    ok: boolean("ok").notNull().default(true),
+    error: text("error"),
+  },
+  (t) => [index("ai_usage_at_idx").on(t.at)],
 );
 
 /** Histórico de puntuaciones: solo se inserta cuando cambian las entradas. */
@@ -295,3 +334,4 @@ export type RepoAudit = typeof repoAudits.$inferSelect;
 export type Trend = typeof trends.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
 export type ConnectorRun = typeof connectorRuns.$inferSelect;
+export type TrendAnalysis = typeof trendAnalyses.$inferSelect;

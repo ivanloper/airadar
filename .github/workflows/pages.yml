@@ -46,6 +46,13 @@ jobs:
       STORAGE_DRIVER: none
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PAGES_BASE_PATH: /${{ github.event.repository.name }}
+      APP_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+      # Opcionales: sin ellos la web funciona igual (sin análisis IA / sin alertas).
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      # Publicación automática con control de calidad (variable del repo AUTO_PUBLISH=false para desactivarla).
+      AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || 'true' }}
     steps:
       - uses: actions/checkout@v7
 

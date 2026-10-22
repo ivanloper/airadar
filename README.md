@@ -32,6 +32,18 @@ GitHub ya no publica quién da estrellas a un repositorio: la API devuelve vací
 
 El resultado es una **confianza** (0–100) y una **calidad** (0–100). La confianza descuenta la adopción en la puntuación: lo inflado no sube. **No es un antivirus**: antes de ejecutar binarios de terceros, verifica su origen.
 
+## Análisis con IA, publicación y alertas (Fase 2)
+
+- **Análisis de oportunidades con Gemini** (opcional; requiere `GEMINI_API_KEY`). Solo se analizan las tendencias mejor puntuadas (`AI_MIN_SCORE`), y la IA no decide qué entra: eso lo decide el código. Para cada una devuelve un JSON validado con el veredicto (probar / aprender / vigilar / descartar), el resumen, el problema, por qué ahora, los casos de uso, para quién, el modelo de negocio, la complejidad, los riesgos, el experimento mínimo, ideas de contenido y los datos que faltan.
+  - El contenido externo va como datos no confiables dentro de `<datos>`: el modelo nunca recibe instrucciones de las fuentes.
+  - **Caché por hash**: no se reanaliza si no hay cambios relevantes. Las cifras se agrupan en tramos y hay que esperar 3 días o recibir nuevas evidencias.
+  - **Límites**: `AI_MAX_ANALYSES_PER_RUN`, `AI_DAILY_TOKEN_BUDGET` y ritmo entre peticiones (`AI_REQUEST_INTERVAL_MS`). Si un modelo agota su cuota diaria se pasa a los de `GEMINI_FALLBACK_MODELS`.
+  - **Proveedor intercambiable**: `src/ai/types.ts` define la interfaz; añadir otro proveedor no toca la lógica de negocio.
+- **Publicación automática con control de calidad** (`AUTO_PUBLISH`): solo publica si la puntuación es ≥ `PUBLISH_MIN_SCORE`, la confianza ≥ `PUBLISH_MIN_CONFIDENCE`, el repositorio está auditado con confianza ≥ 80 y, si hay IA, el análisis existe, no recomienda descartar y no tiene confianza baja. Evita duplicados y conserva el historial.
+- **Alertas de Telegram** (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`): un aviso por tendencia nueva con puntuación ≥ `TELEGRAM_MIN_SCORE` y repositorio fiable.
+
+Para activarlo en GitHub Pages, crea los secretos `GEMINI_API_KEY` (y, si quieres alertas, `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`) en *Settings → Secrets and variables → Actions*.
+
 ## Puntuación (0–100)
 
 Utilidad 25, novedad 20, potencial 20, adopción 15, madurez 10 y relevancia 10. Es determinista y reproducible, y cada factor lleva su evidencia: si falta un dato, se usa un valor provisional y baja la confianza. Los pesos se pueden configurar en `settings` (`scoring.weights`).
@@ -64,6 +76,7 @@ En el modo servidor: `npm run build`, después `node .next/standalone/server.js`
 | RSS | Peticiones condicionales con ETag | Gratis |
 | GitHub Actions + Pages | Repos públicos: minutos ilimitados; Pages hasta 1 GB | Gratis |
 | Supabase (modo servidor) | Plan gratuito de 500 MB | Pro: 25 $/mes |
+| Gemini API (opcional) | Plan gratuito: cuota diaria por modelo (p. ej. 20 peticiones/día en flash; más en flash-lite). ~1.500 tokens por análisis | Gratis o pago por token |
 | X / Reddit / YouTube (Fase 3) | X requiere plan de pago; YouTube, 10.000 unidades/día | Variable |
 
 Una ejecución consume unas 36 búsquedas, alrededor de 40 consultas GraphQL de refresco, unas 40 de auditoría y 1 a 3 peticiones por feed.

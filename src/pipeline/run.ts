@@ -9,7 +9,11 @@ import { getConnector } from "@/connectors/registry";
 import { repoObservationSchema, signalInputSchema, type ValidRepo, type ValidSignal } from "@/connectors/types";
 import type { AppConfig } from "@/lib/config";
 import { putJsonSnapshot, type ObjectStore } from "@/storage";
+import { getAIProvider } from "@/ai";
+import { sendAlerts } from "./alerts";
+import { analyzeTopTrends } from "./analyze";
 import { auditRepos } from "./audit";
+import { autoPublish } from "./autopublish";
 import { assignTrends } from "./group";
 import { persistRepos, persistSignals } from "./persist";
 import { refreshTrends } from "./refresh";
@@ -191,7 +195,9 @@ export async function pruneSnapshots(db: Db, now: Date) {
     ) d where s.id = d.id and d.rn > 1`);
 }
 
-export async function runPipeline(deps: PipelineDeps & { sourceKeys?: string[]; collect?: boolean; audit?: boolean }): Promise<PipelineReport> {
+export async function runPipeline(
+  deps: PipelineDeps & { sourceKeys?: string[]; collect?: boolean; audit?: boolean; ai?: boolean },
+): Promise<PipelineReport> {
   const { db, config } = deps;
   const log = deps.log ?? (() => {});
   const startedAt = (deps.now?.() ?? new Date()).toISOString();
@@ -231,6 +237,24 @@ export async function runPipeline(deps: PipelineDeps & { sourceKeys?: string[]; 
     log(`Agrupación: ${grouping.assigned} señales asignadas, ${grouping.created} tendencias nuevas`);
     const refresh = await refreshTrends(db, config, now, { trendIds: grouping.touched });
     log(`Puntuación: ${refresh.refreshed} tendencias evaluadas, ${refresh.changed} actualizadas, ${refresh.statusChanges} cambios de estado`);
+
+    // Fase 2: análisis con IA, publicación con control de calidad y alertas. Cada paso aislado.
+    const provider = deps.ai === false ? null : getAIProvider(config, deps.fetch);
+    try {
+      if (provider) await analyzeTopTrends({ db, config, provider, now, log });
+    } catch (err) {
+      log(`✗ análisis IA: ${(err as Error).message}`);
+    }
+    try {
+      await autoPublish(db, config, now, Boolean(provider), log);
+    } catch (err) {
+      log(`✗ publicación automática: ${(err as Error).message}`);
+    }
+    try {
+      await sendAlerts(db, config, now, deps.fetch ?? fetch, log);
+    } catch (err) {
+      log(`✗ alertas: ${(err as Error).message}`);
+    }
     return {
       startedAt,
       finishedAt: (deps.now?.() ?? new Date()).toISOString(),

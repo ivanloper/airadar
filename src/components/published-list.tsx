@@ -5,13 +5,22 @@ import { useMemo, useState } from "react";
 import type { TrendLite } from "@/lib/datasets";
 import { CATEGORIES } from "@/lib/taxonomy";
 import { isPeriod, PERIOD_LABELS, periodRange } from "@/lib/time";
+import { VerdictBadge } from "./analysis";
 import { CategoryText, PLATFORM_LABELS, PlatformList, StageBadge } from "./badges";
 import { SelectField } from "./fields";
 import { RelTime } from "./rel-time";
 import { ConfidenceText } from "./score-meter";
 import { useNow, useUrlState } from "./url-state";
 
-export function PublishedList({ rows, timeZone, generatedAt }: { rows: (TrendLite & { revision: number })[]; timeZone: string; generatedAt: string }) {
+export function PublishedList({
+  rows,
+  timeZone,
+  generatedAt,
+}: {
+  rows: (TrendLite & { revision: number; verdict: "probar" | "aprender" | "vigilar" | "descartar" | null })[];
+  timeZone: string;
+  generatedAt: string;
+}) {
   const { sp, set } = useUrlState();
   const now = useNow(generatedAt);
   const [limit, setLimit] = useState(30);
@@ -42,6 +51,7 @@ export function PublishedList({ rows, timeZone, generatedAt }: { rows: (TrendLit
               </Link>
               <p className="mt-1 line-clamp-3 max-w-3xl text-sm leading-relaxed text-ink-2">{t.summary}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
+                {t.verdict && <VerdictBadge verdict={t.verdict} />}
                 <StageBadge stage={t.stage} />
                 <CategoryText category={t.cat} />
                 <PlatformList platforms={t.plats} />
