@@ -12,7 +12,7 @@ import { getSetting } from "@/lib/settings";
 import { classifyRepo, classifyText, type Category, type ProjectType } from "@/lib/taxonomy";
 import { sha256, stableStringify } from "@/lib/text";
 import { buildRecommendation, buildSummary, SUMMARY_VERSION } from "./summary";
-import { PublicationError, transitionTrend } from "./publication";
+import { transitionTrend } from "./publication";
 
 const KIND_PRIORITY: TrendKind[] = ["repository", "launch", "paper", "article", "discussion"];
 
@@ -253,34 +253,14 @@ export async function refreshTrends(db: Db, config: AppConfig, now: Date, opts: 
       await db.update(trends).set({ score: result.score, confidence: result.confidence, scoredAt: now }).where(eq(trends.id, trend.id));
     }
 
-    // Reglas editoriales automáticas.
+    // Regla editorial: lo que supera el umbral pasa a revisión (la publicación automática se decide después del análisis).
     if (trend.status === "detected" && result.score >= config.REVIEW_MIN_SCORE) {
-      const autoPublish =
-        config.AUTO_PUBLISH && result.score >= config.PUBLISH_MIN_SCORE && result.confidence >= config.PUBLISH_MIN_CONFIDENCE;
-      if (!autoPublish) {
-        await transitionTrend(db, trend.id, "pending_review", {
-          actor: "system",
-          note: `Puntuación ${result.score} ≥ ${config.REVIEW_MIN_SCORE}: enviada a revisión.`,
-          now,
-        });
-        statusChanges++;
-      } else {
-        await transitionTrend(db, trend.id, "approved", {
-          actor: "system",
-          note: `Supera los umbrales de publicación automática (${config.PUBLISH_MIN_SCORE} / ${config.PUBLISH_MIN_CONFIDENCE}).`,
-          now,
-        });
-        statusChanges++;
-        try {
-          await transitionTrend(db, trend.id, "published", { actor: "system", note: "Publicación automática.", now });
-          statusChanges++;
-        } catch (err) {
-          if (!(err instanceof PublicationError)) throw err;
-          // Duplicado u otra regla editorial: vuelve a revisión humana con el motivo.
-          await transitionTrend(db, trend.id, "pending_review", { actor: "system", note: err.message, now });
-          statusChanges++;
-        }
-      }
+      await transitionTrend(db, trend.id, "pending_review", {
+        actor: "system",
+        note: `Puntuación ${result.score} ≥ ${config.REVIEW_MIN_SCORE}: enviada a revisión.`,
+        now,
+      });
+      statusChanges++;
     }
   }
   return { refreshed: list.length, changed, historyRows, statusChanges };

@@ -1,14 +1,14 @@
 /** Consultas de lectura para fichas, histórico y fuentes (servidor). */
 import { asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { connectorRuns, publicationEvents, repoAudits, repoSnapshots, repositories, signals, sources, trendScoreHistory, trends } from "@/db/schema";
+import { connectorRuns, publicationEvents, repoAudits, repoSnapshots, repositories, signals, sources, trendAnalyses, trendScoreHistory, trends } from "@/db/schema";
 import { signalsPerDay } from "./datasets";
 
 export async function trendDetail(db: Db, slug: string) {
   const [trend] = await db.select().from(trends).where(eq(trends.slug, slug));
   if (!trend) return null;
   const [repo] = trend.repoId ? await db.select().from(repositories).where(eq(repositories.id, trend.repoId)) : [null];
-  const [evidence, history, events, snapshots, audit] = await Promise.all([
+  const [evidence, history, events, snapshots, audit, analysis] = await Promise.all([
     db
       .select({ signal: signals, sourceName: sources.name, official: sources.official, quality: sources.quality })
       .from(signals)
@@ -19,8 +19,9 @@ export async function trendDetail(db: Db, slug: string) {
     db.select().from(publicationEvents).where(eq(publicationEvents.trendId, trend.id)).orderBy(desc(publicationEvents.at)),
     repo ? db.select().from(repoSnapshots).where(eq(repoSnapshots.repoId, repo.id)).orderBy(asc(repoSnapshots.observedAt)) : Promise.resolve([]),
     repo ? db.select().from(repoAudits).where(eq(repoAudits.repoId, repo.id)) : Promise.resolve([]),
+    db.select().from(trendAnalyses).where(eq(trendAnalyses.trendId, trend.id)),
   ]);
-  return { trend, repo: repo ?? null, evidence, history, events, snapshots, audit: audit[0] ?? null };
+  return { trend, repo: repo ?? null, evidence, history, events, snapshots, audit: audit[0] ?? null, analysis: analysis[0] ?? null };
 }
 
 export async function historyData(db: Db, now: Date, timeZone: string) {

@@ -22,7 +22,7 @@ export interface SummaryInput {
 }
 
 /** Cambiar al modificar las plantillas: fuerza la regeneración de textos en el siguiente recálculo. */
-export const SUMMARY_VERSION = 2;
+export const SUMMARY_VERSION = 3;
 
 const KIND_LABEL: Record<TrendKind, string> = {
   repository: "repositorio",
@@ -60,14 +60,11 @@ export function buildSummary(i: SummaryInput): string {
   const parts: string[] = [];
   const cat = CATEGORIES[i.category].toLowerCase();
   if (i.repo) {
+    // Breve: los datos de detalle ya están en la ficha del repositorio.
     const type = PROJECT_TYPES[i.repo.projectType as ProjectType] ?? "Proyecto";
     parts.push(
-      `${i.repo.displayName} es un proyecto de tipo «${type}» en la categoría ${cat}` +
-        `${i.repo.language ? `, escrito principalmente en ${i.repo.language}` : ""}, creado el ${formatDate(i.repo.createdAtGh, i.timeZone)}.`,
+      `${type}${i.repo.language ? ` en ${i.repo.language}` : ""} de ${cat}, con ${formatNumber(i.repo.stars)} estrellas y ${formatNumber(i.repo.forks)} forks.`,
     );
-    const vel = velocityText(i.score);
-    parts.push(`Tiene ${formatNumber(i.repo.stars)} estrellas y ${formatNumber(i.repo.forks)} forks${vel ? `; ${vel}` : ""}.`);
-    if (i.repo.latestReleaseTag) parts.push(`Última release: ${i.repo.latestReleaseTag}.`);
   } else {
     const src = i.sources.find((s) => s.official) ?? i.sources[0];
     parts.push(

@@ -4,7 +4,8 @@
  */
 import { and, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { connectorRuns, repoAudits, repoSnapshots, repositories, signals, sources, trends, type Trend } from "@/db/schema";
+import { connectorRuns, repoAudits, repoSnapshots, repositories, signals, sources, trendAnalyses, trends, type Trend } from "@/db/schema";
+import { parseAnalysis } from "@/pipeline/analyze";
 import { IS_STATIC } from "./mode";
 import type { RepoRow } from "./repo-filter";
 import { DEFAULT_WEIGHTS, type FactorKey } from "./scoring";
@@ -345,14 +346,16 @@ export async function webDataset(db: Db, now: Date) {
 
 export async function opportunityDataset(db: Db) {
   const rows = await db
-    .select({ t: trends, r: repositories })
+    .select({ t: trends, r: repositories, a: trendAnalyses })
     .from(trends)
     .leftJoin(repositories, eq(repositories.id, trends.repoId))
+    .leftJoin(trendAnalyses, eq(trendAnalyses.trendId, trends.id))
     .where(and(gte(trends.score, 60), sql`${trends.status} <> 'archived'`))
     .orderBy(desc(sql`${trends.score} * (0.5 + 0.5 * ${trends.confidence}) * (case when ${repositories.trustScore} is null then 1 else 0.6 + 0.4 * ${repositories.trustScore} / 100.0 end)`))
     .limit(80);
-  return rows.map(({ t, r }) => ({
+  return rows.map(({ t, r, a }) => ({
     ...toLite(t),
+    analysis: a ? parseAnalysis(a.data) : null,
     summary: t.summary,
     recommendation: t.recommendation,
     missing: ((t.breakdown as { missing?: string[] }).missing ?? []).slice(0, 5),
@@ -371,6 +374,15 @@ export async function opportunityDataset(db: Db) {
 export type OpportunityRow = Awaited<ReturnType<typeof opportunityDataset>>[number];
 
 export async function publishedDataset(db: Db) {
-  const rows = await db.select().from(trends).where(eq(trends.status, "published")).orderBy(desc(trends.publishedAt)).limit(500);
-  return rows.map((t) => ({ ...toLite(t), revision: t.revision }));
+  const rows = await db
+    .select({ t: trends, a: trendAnalyses })
+    .from(trends)
+    .leftJoin(trendAnalyses, eq(trendAnalyses.trendId, trends.id))
+    .where(eq(trends.status, "published"))
+    .orderBy(desc(trends.publishedAt))
+    .limit(500);
+  return rows.map(({ t, a }) => {
+    const analysis = a ? parseAnalysis(a.data) : null;
+    return { ...toLite(t), summary: analysis ? truncate(analysis.resumen, 260) : truncate(t.summary, 260), verdict: analysis?.veredicto ?? null, revision: t.revision };
+  });
 }

@@ -8,6 +8,7 @@ import { STAGES } from "@/lib/scoring";
 import { CATEGORIES, type Category } from "@/lib/taxonomy";
 import { formatNumber } from "@/lib/text";
 import { CategoryText, PlatformList, StageBadge, TrustBadge } from "./badges";
+import { VerdictBadge } from "./analysis";
 import { CompatRow } from "./compat-logos";
 import { SelectField } from "./fields";
 import { breakdownFromArrays, ConfidenceText, ScoreMeter } from "./score-meter";
@@ -59,6 +60,7 @@ export function OpportunityList({ rows }: { rows: OpportunityRow[] }) {
                           </svg>
                         </div>
                         <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                          {t.analysis && <VerdictBadge verdict={t.analysis.veredicto} />}
                           <StageBadge stage={t.stage} />
                           {t.kind === "repository" && <TrustBadge trust={t.trust} quality={t.quality} />}
                           <CategoryText category={t.cat} />
@@ -80,45 +82,50 @@ export function OpportunityList({ rows }: { rows: OpportunityRow[] }) {
                     <dl className="space-y-3">
                       <div>
                         <dt className="font-medium">Qué es</dt>
-                        <dd className="text-ink-2">{t.summary}</dd>
+                        <dd className="text-ink-2">{t.analysis?.resumen ?? t.summary}</dd>
                       </div>
                       <div>
                         <dt className="font-medium">Problema que resuelve</dt>
-                        <dd className="text-ink-2">{t.repoDesc ? `Según su autor: ${t.repoDesc}` : "Pendiente de análisis (Fase 2, con IA)."}</dd>
+                        <dd className="text-ink-2">{t.analysis?.problema ?? (t.repoDesc ? `Según su autor: ${t.repoDesc}` : "Pendiente de análisis con IA.")}</dd>
                       </div>
                       <div>
                         <dt className="font-medium">Por qué llama la atención</dt>
                         <dd className="text-ink-2">
-                          {[vel, t.plats.length > 1 ? `aparece en ${t.plats.length} plataformas` : null, `${t.signalCount} evidencias`].filter(Boolean).join("; ")}.
+                          {t.analysis?.por_que_ahora ??
+                            `${[vel, t.plats.length > 1 ? `aparece en ${t.plats.length} plataformas` : null, `${t.signalCount} evidencias`].filter(Boolean).join("; ")}.`}
                         </dd>
                       </div>
                       <div>
                         <dt className="font-medium">Experimento mínimo</dt>
-                        <dd className="text-ink-2">{t.recommendation}</dd>
+                        <dd className="text-ink-2">{t.analysis?.experimento_minimo ?? t.recommendation}</dd>
                       </div>
                     </dl>
                     <dl className="space-y-3">
                       <div>
                         <dt className="font-medium">Para quién (hipótesis)</dt>
-                        <dd className="text-ink-2">{h.users}</dd>
+                        <dd className="text-ink-2">{t.analysis?.usuarios.join("; ") || h.users}</dd>
                       </div>
                       <div>
                         <dt className="font-medium">Casos de uso (hipótesis)</dt>
-                        <dd className="text-ink-2">{h.useCases}</dd>
+                        <dd className="text-ink-2">{t.analysis?.casos_de_uso.join("; ") || h.useCases}</dd>
                       </div>
                       <div>
                         <dt className="font-medium">Modelo de negocio posible (hipótesis)</dt>
-                        <dd className="text-ink-2">{h.businessModel}</dd>
+                        <dd className="text-ink-2">{t.analysis?.modelo_negocio || h.businessModel}</dd>
                       </div>
                       <div>
                         <dt className="font-medium">Complejidad y riesgo</dt>
                         <dd className="text-ink-2">
-                          Complejidad {t.experimentCost ? LEVEL[t.experimentCost] : "desconocida"}, riesgo {t.risk ? LEVEL[t.risk] : "desconocido"}.
+                          Complejidad {t.analysis?.complejidad ?? (t.experimentCost ? LEVEL[t.experimentCost] : "desconocida")}, riesgo{" "}
+                          {t.risk ? LEVEL[t.risk] : "desconocido"}.
+                          {t.analysis?.riesgos.length ? ` ${t.analysis.riesgos.join("; ")}.` : ""}
                         </dd>
                       </div>
                       <div>
                         <dt className="font-medium">Datos que faltan</dt>
-                        <dd className="text-ink-2">{t.missing.length ? t.missing.join("; ") : "Ninguno destacado."}</dd>
+                        <dd className="text-ink-2">
+                          {[...new Set([...(t.analysis?.datos_que_faltan ?? []), ...t.missing])].slice(0, 5).join("; ") || "Ninguno destacado."}
+                        </dd>
                       </div>
                     </dl>
                     <p className="md:col-span-2">

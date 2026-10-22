@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { CategoryText, PLATFORM_LABELS, PlatformList, StageBadge, StatusText, TrustBadge } from "@/components/badges";
 import { Sparkline } from "@/components/charts";
+import { AnalysisPanel, VerdictBadge } from "@/components/analysis";
 import { CompatLogo } from "@/components/compat-logos";
 import { ScoreHelp, TrustHelp } from "@/components/help";
 import { InfoTip } from "@/components/info-tip";
@@ -21,6 +22,7 @@ import { STATUSES, type Status } from "@/lib/statuses";
 import { MATURITY, PROJECT_TYPES } from "@/lib/taxonomy";
 import { formatNumber } from "@/lib/text";
 import { formatDate } from "@/lib/time";
+import { parseAnalysis } from "@/pipeline/analyze";
 import { velocityShort } from "@/pipeline/summary";
 
 type Params = Promise<{ slug: string }>;
@@ -56,6 +58,7 @@ export default async function TrendPage({ params }: { params: Params }) {
   if (!IS_STATIC && config.PRIVATE_DASHBOARD && d.trend.status !== "published" && !admin) redirect("/admin");
 
   const { trend: t, repo, evidence, history, events, snapshots, audit } = d;
+  const analysis = d.analysis ? parseAnalysis(d.analysis.data) : null;
   const breakdown = t.breakdown as {
     factors?: Record<FactorKey, { value: number; evidence: number; points: number; note: string }>;
     weights?: Record<FactorKey, number>;
@@ -85,16 +88,17 @@ export default async function TrendPage({ params }: { params: Params }) {
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <StageBadge stage={t.stage} />
+            {analysis && <VerdictBadge verdict={analysis.veredicto} />}
             {repo && <TrustBadge trust={repo.trustScore} quality={repo.qualityScore} />}
             <StatusText status={t.status} />
             <CategoryText category={t.category} />
           </div>
           <h1 className="display break-words text-[2.2rem] font-semibold sm:text-5xl">{t.title}</h1>
-          <p className="mt-4 max-w-2xl leading-relaxed text-ink-2">{t.summary}</p>
-          {t.recommendation && (
+          <p className="mt-4 max-w-2xl leading-relaxed text-ink-2">{analysis?.resumen ?? t.summary}</p>
+          {(analysis?.experimento_minimo ?? t.recommendation) && (
             <p className="mt-4 max-w-2xl border-l-2 border-signal pl-3 text-sm">
-              <span className="font-semibold">Recomendación: </span>
-              {t.recommendation}
+              <span className="font-semibold">{analysis ? "Experimento mínimo: " : "Recomendación: "}</span>
+              {analysis?.experimento_minimo ?? t.recommendation}
             </p>
           )}
           <div className="mt-5 flex flex-wrap gap-2">
@@ -136,6 +140,23 @@ export default async function TrendPage({ params }: { params: Params }) {
           </dl>
         </div>
       </header>
+
+      {analysis && d.analysis && (
+        <div className="mb-6">
+          <Section
+            title="Análisis de AI Radar"
+            id="analysis"
+            action={
+              <InfoTip label="Cómo se genera el análisis">
+                Un modelo de IA resume las evidencias de esta ficha (métricas, auditoría y fuentes). Solo se analizan las tendencias mejor
+                puntuadas, y el contenido externo se trata como dato: nunca como instrucción. Son hipótesis, no certezas.
+              </InfoTip>
+            }
+          >
+            <AnalysisPanel a={analysis} model={d.analysis.model} createdAt={d.analysis.createdAt.toISOString()} timeZone={tz} compact />
+          </Section>
+        </div>
+      )}
 
       {repo && repo.compat.length > 0 && (
         <div className="mb-6">
