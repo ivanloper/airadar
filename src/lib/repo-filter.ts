@@ -69,6 +69,7 @@ export const AGE_BUCKETS = {
   "7": "Menos de 7 días",
   "30": "Menos de 30 días",
   "90": "Menos de 3 meses",
+  "180": "Menos de 6 meses",
   "365": "Menos de 1 año",
   "old": "Más de 1 año",
 } as const;

@@ -26,6 +26,8 @@ export interface PipelineDeps {
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   log?: (msg: string) => void;
+  /** Recarga histórica única (días hacia atrás) para las fuentes que la admiten. */
+  backfillDays?: number;
 }
 
 export interface SourceRunReport {
@@ -101,6 +103,7 @@ export async function runSource(source: Source, deps: PipelineDeps): Promise<Sou
         fetch: deps.fetch ?? fetch,
         sleep: deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))),
         log,
+        backfillDays: deps.backfillDays,
       });
       report.warnings.push(...result.warnings);
 

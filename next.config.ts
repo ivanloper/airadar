@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
   pageExtensions: isStatic ? ["tsx", "ts"] : ["tsx", "ts", "dyn.tsx", "dyn.ts"],
   poweredByHeader: false,
   serverExternalPackages: ["postgres", "@electric-sql/pglite"],
-  env: { NEXT_PUBLIC_STATIC_EXPORT: isStatic ? "1" : "" },
+  env: { NEXT_PUBLIC_STATIC_EXPORT: isStatic ? "1" : "", NEXT_PUBLIC_BASE_PATH: (isStatic && basePath) || "" },
   // En la exportación estática cada worker abre conexiones a Postgres: se limitan para no agotar el servidor.
   experimental: isStatic ? { cpus: 4 } : undefined,
   ...(isStatic

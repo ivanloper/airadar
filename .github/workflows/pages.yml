@@ -11,6 +11,10 @@ on:
         description: "Recoger datos nuevos de las fuentes (si no, solo recalcula y publica)"
         type: boolean
         default: true
+      backfill_days:
+        description: "Recarga histórica única de RSS y Hacker News (días hacia atrás, 0 = no)"
+        type: number
+        default: 0
   push:
     branches: [main]
 
@@ -81,6 +85,10 @@ jobs:
       - name: Recoger y auditar señales
         if: github.event_name == 'schedule' || steps.restore.outputs.restored != 'true' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: npm run worker
+
+      - name: Recarga histórica
+        if: github.event_name == 'workflow_dispatch' && inputs.backfill_days > 0
+        run: npm run worker -- --backfill=${{ inputs.backfill_days }}
 
       - name: Recalcular sin recoger
         if: ${{ !(github.event_name == 'schedule' || steps.restore.outputs.restored != 'true' || (github.event_name == 'workflow_dispatch' && inputs.collect)) }}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { TrendLite } from "@/lib/datasets";
 import { CATEGORIES } from "@/lib/taxonomy";
-import { isPeriod, PERIOD_LABELS, periodRange } from "@/lib/time";
+import { isAnyPeriod, PERIOD_LABELS, periodRange } from "@/lib/time";
 import { VerdictBadge } from "./analysis";
 import { CategoryText, PLATFORM_LABELS, PlatformList, StageBadge } from "./badges";
 import { SelectField } from "./fields";
@@ -27,7 +27,7 @@ export function PublishedList({
   const platform = sp.get("platform") ?? "";
   const category = sp.get("category") ?? "";
   const p = sp.get("period");
-  const period = isPeriod(p) ? p : "";
+  const period = isAnyPeriod(p) ? p : "";
   const list = useMemo(() => {
     const start = period ? periodRange(period, now, timeZone).start.getTime() : -Infinity;
     return rows.filter(
